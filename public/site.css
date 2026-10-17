@@ -289,3 +289,5 @@ p { margin: 0; text-wrap: pretty; }
 
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .btn:disabled { opacity: .6; cursor: progress; }
+
+.soon { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }

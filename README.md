@@ -6,7 +6,7 @@ Live at https://gnosis.promintal.com
 
 ## What is here
 
-- `public/`: the website (index, product, download, about, demo, contact, privacy), `site.css`, `site.js`, `assets/`, `downloads/`, and the private dashboard `admin.html`
+- `public/`: the website (index, product, download, about, demo, contact, privacy), `site.css`, `site.js`, `assets/`, and the private dashboard `admin.html`
 - `src/worker.js`: a small Cloudflare Worker that serves `public/` and records visits to a D1 database
 - `wrangler.jsonc`: Worker, assets and database settings
 
@@ -34,3 +34,7 @@ Open `https://gnosis.promintal.com/admin` and enter the `ADMIN_TOKEN`. It refres
 ## Licence
 
 All rights reserved, Promintal Consulting Limited. See [LICENSE](LICENSE).
+
+## Downloads
+
+Downloads are switched off until the official launch. The Download buttons show a "not available yet" message and nothing is served. To switch them on later, put the zip files in `public/downloads/` and change the two `data-soon` links on `download.html` back to `downloads/Gnosis-v2-Mac-App.zip` and `downloads/Gnosis-v2.zip` (in `build.py` of the site source).

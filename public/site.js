@@ -37,8 +37,18 @@
   track("pageview");
   setInterval(function () { if (document.visibilityState === "visible") track("heartbeat"); }, 30000);
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") track("heartbeat"); });
-  $$('a[href*="downloads/"]').forEach(function (a) {
-    a.addEventListener("click", function () { track("download", /Mac-App/.test(a.getAttribute("href")) ? "mac-app" : "package"); });
+  /* Downloads are switched off until the official launch: the buttons stay, but nothing is downloaded. */
+  $$("a[data-soon]").forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      track("download", "interest-" + a.getAttribute("data-soon"));
+      var card = a.parentElement, note = $(".soon", card);
+      if (!note) {
+        note = document.createElement("p"); note.className = "soon"; note.setAttribute("role", "status");
+        note.innerHTML = 'Gnosis is not available to download yet. <a href="demo.html">Request a demo</a> and we will let you know when it launches.';
+        card.appendChild(note);
+      }
+    });
   });
 
   /* hero: screenshot tilts toward the pointer */

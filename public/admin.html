@@ -154,7 +154,7 @@ const fmtTime=t=>t?new Date(t).toLocaleString('en-GB',{day:'numeric',month:'shor
 const ago=t=>{const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<60?`${s}s ago`:s<3600?`${Math.round(s/60)}m ago`:`${Math.round(s/3600)}h ago`;};
 const regionName=(()=>{try{const d=new Intl.DisplayNames(['en-GB'],{type:'region'});return c=>{if(!c||c==='??'||c==='XX'||c==='T1')return 'Unknown';try{return d.of(c)||c}catch(e){return c}};}catch(e){return c=>c||'Unknown';}})();
 const ACT={pageview:'Viewed a page',heartbeat:'Browsing',download:'Downloaded',tryit:'Tried the example chat',lead:'Sent a message'};
-const KIND={'mac-app':'Mac app','package':'Mac and Windows package',demo:'Demo request',contact:'Contact message',ask:'Asked a question'};
+const KIND={'mac-app':'Mac app','package':'Mac and Windows package','interest-mac-app':'Mac app (clicked, not available)','interest-package':'Package (clicked, not available)',demo:'Demo request',contact:'Contact message',ask:'Asked a question'};
 const detail=e=>e.type==='download'?(KIND[e.meta]||e.meta||''):e.type==='lead'?(KIND[e.meta]||e.meta||''):e.type==='pageview'&&e.ref?'from '+e.ref:'';
 const pageName=p=>!p||p==='/'||p==='/index.html'?'Home':p.replace(/^\//,'').replace(/\.html$/,'').replace(/^./,c=>c.toUpperCase());
 let TOKEN='';try{TOKEN=sessionStorage.getItem('gn.admin')||'';}catch(e){}
