@@ -286,3 +286,6 @@ p { margin: 0; text-wrap: pretty; }
 .feature p + p { margin-top: 8px; }
 .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
 .pill { font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.btn:disabled { opacity: .6; cursor: progress; }

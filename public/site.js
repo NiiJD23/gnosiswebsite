@@ -177,11 +177,14 @@
     });
   }
 
-  /* forms: build an email draft. Nothing is sent from the page itself. */
+  /* forms: send the request through this site's Worker (Resend). If that is not available, fall back to an email draft. */
   $$("form[data-mail]").forEach(function (form) {
     var out = $("#" + form.getAttribute("data-result"));
+    var sent = $(".sent", out), draft = $(".draft", out), btn = $("button[type=submit]", form);
     var to = "info@promintal.co.uk";
+    var kind = form.id === "demo-form" ? "demo" : "contact";
     var clear = function () { $$(".err", form).forEach(function (e) { e.textContent = ""; }); };
+    var reveal = function () { out.hidden = false; out.scrollIntoView({ block: "nearest", behavior: calm ? "auto" : "smooth" }); };
     form.addEventListener("submit", function (e) {
       e.preventDefault(); clear();
       var bad = false;
@@ -191,21 +194,32 @@
         else if (f.type === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v)) { if (er) er.textContent = "Enter an email address like name@company.com."; bad = bad || f; }
       });
       if (bad) { bad.focus(); return; }
-      var lines = [];
+      var fields = [], name = "", email = "";
       $$("[data-label]", form).forEach(function (f) {
         var v;
         if (f.type === "checkbox") { if (!f.checked) return; v = "yes"; } else v = (f.value || "").trim();
-        if (v) lines.push(f.getAttribute("data-label") + ": " + v);
+        if (!v) return;
+        var l = f.getAttribute("data-label");
+        if (l === "Name") name = v; if (l === "Email") email = v;
+        fields.push([l, v]);
       });
-      var subject = form.getAttribute("data-subject"), body = lines.join("\n");
-      $("textarea", out).value = "To: " + to + "\nSubject: " + subject + "\n\n" + body;
-      $("a.open", out).setAttribute("href", "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body));
-      track("lead", form.id === "demo-form" ? "demo" : "contact");
-      out.hidden = false; out.scrollIntoView({ block: "nearest", behavior: calm ? "auto" : "smooth" });
+      var subject = form.getAttribute("data-subject"), body = fields.map(function (p) { return p[0] + ": " + p[1]; }).join("\n");
+      $("textarea", draft).value = "To: " + to + "\nSubject: " + subject + "\n\n" + body;
+      $("a.open", draft).setAttribute("href", "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body));
+      var hp = $('input[name="website"]', form);
+      var showDraft = function () { sent.hidden = true; draft.hidden = false; reveal(); };
+      var showSent = function () { draft.hidden = true; sent.hidden = false; form.reset(); reveal(); };
+      var label = btn.textContent; btn.disabled = true; btn.textContent = "Sending...";
+      var ctl = window.AbortController ? new AbortController() : null, timer = setTimeout(function () { if (ctl) ctl.abort(); }, 10000);
+      fetch("/api/request", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl ? ctl.signal : undefined,
+        body: JSON.stringify({ kind: kind, name: name, email: email, fields: fields, website: hp ? hp.value : "" }) })
+        .then(function (r) { if (!r.ok) throw new Error("status " + r.status); track("lead", kind); showSent(); })
+        .catch(function () { showDraft(); })
+        .then(function () { clearTimeout(timer); btn.disabled = false; btn.textContent = label; });
     });
-    var cp = $("button.copy", out);
+    var cp = $("button.copy", draft);
     cp.addEventListener("click", function () {
-      var ta = $("textarea", out), ok = function () { cp.textContent = "Copied"; setTimeout(function () { cp.textContent = "Copy message"; }, 1800); };
+      var ta = $("textarea", draft), ok = function () { cp.textContent = "Copied"; setTimeout(function () { cp.textContent = "Copy message"; }, 1800); };
       var fallback = function () { ta.select(); try { document.execCommand("copy"); ok(); } catch (x) { cp.textContent = "Press Ctrl+C to copy"; } };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(ok, fallback); else fallback();
     });

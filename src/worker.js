@@ -3,11 +3,12 @@
  *
  * Serves the static site from ./public and adds a small analytics API backed by D1:
  *   POST /api/event               page views, heartbeats, downloads, demo-chat use and form use
+ *   POST /api/request             demo and contact forms: emails info@promintal.co.uk through Resend
  *   GET  /api/admin/summary       live and historical usage for the dashboard (Bearer ADMIN_TOKEN)
  *   GET  /api/admin/events.csv    recent events as CSV (Bearer ADMIN_TOKEN)
  *
- * Bindings: DB (D1 database), ASSETS (static files). Secret: ADMIN_TOKEN.
- * No names, emails, form contents or IP addresses are stored.
+ * Bindings: DB (D1 database), ASSETS (static files). Secrets: ADMIN_TOKEN, RESEND_API_KEY.
+ * Visit records never hold names, emails, form text or IP addresses. Form text goes only into the email.
  */
 
 const LIVE_WINDOW_MS = 90 * 1000;
@@ -137,6 +138,69 @@ async function handleEvent(request, env) {
   return new Response(null, { status: 204 });
 }
 
+
+/* ------------------------------ demo and contact forms ------------------------------ */
+
+const MAIL_TO = 'info@promintal.co.uk';
+const MAIL_FROM_DEFAULT = 'Gnosis website <noreply@gnosis.promintal.com>';
+const MAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,63}$/;
+const SUBJECTS = { demo: 'Gnosis demo request', contact: 'Gnosis enquiry' };
+const oneLine = (v, n) => clip(String(v ?? ''), n).replace(/[\r\n\t]+/g, ' ').trim();
+
+async function handleRequest(request, env) {
+  if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
+  const url = new URL(request.url);
+  const origin = request.headers.get('origin');
+  if (origin && new URL(origin).host !== url.host) return json({ error: 'Cross-site requests are not accepted.' }, 403);
+  if (!env.RESEND_API_KEY) return json({ error: 'Email sending is not set up yet.' }, 503);
+
+  let body;
+  try {
+    const text = await request.text();
+    if (text.length > 12000) return json({ error: 'Message too large.' }, 413);
+    body = JSON.parse(text);
+  } catch {
+    return json({ error: 'Send a JSON body.' }, 400);
+  }
+
+  // Hidden field that people never see: if it is filled in, it is a bot. Pretend it worked.
+  if (body.website) return new Response(null, { status: 204 });
+
+  const kind = body.kind === 'demo' || body.kind === 'contact' ? body.kind : null;
+  const name = oneLine(body.name, 120);
+  const email = oneLine(body.email, 254).toLowerCase();
+  if (!kind || !name || !MAIL_RE.test(email)) return json({ error: 'Name and a valid email are needed.' }, 400);
+  const fields = (Array.isArray(body.fields) ? body.fields : []).slice(0, 20)
+    .map((p) => (Array.isArray(p) ? [oneLine(p[0], 60), clip(String(p[1] ?? ''), 4000).trim()] : null))
+    .filter((p) => p && p[0] && p[1]);
+  if (!fields.length) return json({ error: 'Empty message.' }, 400);
+
+  // Simple flood limit, shared by everyone: at most 30 sent messages an hour.
+  if (env.DB) {
+    await ensureSchema(env.DB);
+    const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM events WHERE type = 'lead' AND ts > ?1`).bind(Date.now() - 3600 * 1000).first();
+    if (row && row.n >= 30) return json({ error: 'Too many requests. Please email us directly.' }, 429);
+  }
+
+  const lines = fields.map(([k, v]) => `${k}: ${v}`);
+  const res = await fetch(env.RESEND_URL || 'https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM || MAIL_FROM_DEFAULT,
+      to: [MAIL_TO],
+      reply_to: email,
+      subject: `${SUBJECTS[kind]} from ${name}`,
+      text: `${lines.join('\n')}\n\n---\nSent from gnosis.promintal.com. Reply to this email to answer ${name}.`,
+    }),
+  });
+  if (!res.ok) {
+    console.error('Resend error', res.status, (await res.text()).slice(0, 300));
+    return json({ error: 'Could not send the message.' }, 502);
+  }
+  return new Response(null, { status: 204 });
+}
+
 /* ------------------------------ admin API ------------------------------ */
 
 async function handleSummary(env) {
@@ -206,8 +270,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
-    if (!env.DB) return json({ error: 'Analytics database is not connected. Add the D1 binding named DB.' }, 503);
     try {
+      if (url.pathname === '/api/request') return await handleRequest(request, env);
+      if (!env.DB) return json({ error: 'Analytics database is not connected. Add the D1 binding named DB.' }, 503);
       if (url.pathname === '/api/event') return await handleEvent(request, env);
       if (url.pathname.startsWith('/api/admin/')) {
         if (!env.ADMIN_TOKEN) return json({ error: 'ADMIN_TOKEN is not set on this Worker.' }, 503);
