@@ -6,9 +6,12 @@ Live at https://gnosis.promintal.com
 
 ## What is here
 
-- `index.html`: the whole site in one file (styles, script and screenshots included)
-- `favicon.svg`: the Gnosis logo mark
+- `index.html`, `product.html`, `download.html`, `about.html`, `demo.html`, `contact.html`: the six pages
+- `site.css` and `site.js`: shared styles and script (theme toggle, try-it demo, forms)
+- `assets/`: screenshots and logo
 - `downloads/`: the Mac app and the full package that the download buttons link to
+
+The demo and contact forms prepare an email draft for info@promintal.co.uk. Nothing is sent from the page.
 
 ## Publish
 
