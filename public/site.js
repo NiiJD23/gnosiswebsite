@@ -15,6 +15,32 @@
     try { localStorage.setItem("gnosis-theme", next); } catch (e) {}
   });
 
+
+  /* usage analytics: live site only. Sends page views, downloads and form use to this site's own Worker.
+     Never sends anything you type. Off elsewhere, and when the browser sends Do Not Track or Global Privacy Control. */
+  var TRACK = /(^|\.)promintal\.com$/.test(location.hostname) && !window.__nt &&
+    navigator.doNotTrack !== "1" && !navigator.globalPrivacyControl;
+  var rid = function () { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12); };
+  var VID = null;
+  try { VID = localStorage.getItem("gnosis.vid"); } catch (e) {}
+  if (!VID || !/^[A-Za-z0-9-]{8,64}$/.test(VID)) { VID = rid(); try { localStorage.setItem("gnosis.vid", VID); } catch (e) {} }
+  var SID = rid();
+  var track = function (type, meta) {
+    if (!TRACK) return;
+    try {
+      var body = JSON.stringify({ type: type, vid: VID, sid: SID, path: location.pathname, ref: type === "pageview" ? document.referrer.slice(0, 300) : "", meta: meta || "" });
+      if (navigator.sendBeacon && navigator.sendBeacon("/api/event", new Blob([body], { type: "application/json" }))) return;
+      fetch("/api/event", { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true }).catch(function () {});
+    } catch (e) {}
+  };
+  window.gnosisTrack = track;
+  track("pageview");
+  setInterval(function () { if (document.visibilityState === "visible") track("heartbeat"); }, 30000);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") track("heartbeat"); });
+  $$('a[href*="downloads/"]').forEach(function (a) {
+    a.addEventListener("click", function () { track("download", /Mac-App/.test(a.getAttribute("href")) ? "mac-app" : "package"); });
+  });
+
   /* hero: screenshot tilts toward the pointer */
   var shot = $("#shot");
   var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -82,7 +108,7 @@
     };
     var ask = function (question) {
       question = question.trim(); if (!question || busy) return;
-      busy = true; add("me", question);
+      busy = true; add("me", question); track("tryit", "ask");
       var st = add("bot step", "Searching your memory on this computer...");
       setTimeout(function () {
         var i = find(question);
@@ -174,6 +200,7 @@
       var subject = form.getAttribute("data-subject"), body = lines.join("\n");
       $("textarea", out).value = "To: " + to + "\nSubject: " + subject + "\n\n" + body;
       $("a.open", out).setAttribute("href", "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body));
+      track("lead", form.id === "demo-form" ? "demo" : "contact");
       out.hidden = false; out.scrollIntoView({ block: "nearest", behavior: calm ? "auto" : "smooth" });
     });
     var cp = $("button.copy", out);

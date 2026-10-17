@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Gnosis Analytics</title>
+<style>
+/* Layout: an operator console — header, KPI strip, live table beside a 30-day chart, then users and activity */
+:root{
+  --red:#9B2C8F;--red-deep:#9B2C8F;--cyan:#EAE2F3;--cyan-soft:#F1E9FB;--teal:#6B2FBF;--navy:#26105a;
+  --bg:#F7F3FB;--panel:#FFFFFF;--ice:#F4EEFB;--ink:#1C1527;--muted:#5B5266;--line:#E2D9EC;
+  --good:#17714A;--good-bg:#DDF1E5;--f:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45}
+button,input{font-family:var(--f)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:16px;padding-block:16px 48px}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer}
+.btn:hover{border-color:var(--teal)}
+.btn.navy{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.red{background:var(--red-deep);border-color:var(--red-deep);color:#fff}
+
+/* gate */
+.gate{min-height:100vh;display:grid;place-items:center;padding:16px;background:radial-gradient(120% 90% at 0% 0%,#4A1F8C 0%,#26105a 50%,#170734 100%)}
+.gate img{height:44px;width:auto;align-self:flex-start}
+.gate form{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px;box-shadow:0 14px 34px rgba(23,7,52,.35)}
+.gate h1{margin:0;font-size:24px;letter-spacing:-.02em}
+.gate p{margin:0;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:var(--muted)}
+.field input{font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--ice);color:var(--ink)}
+.err{color:#B42F25;font-size:13px;min-height:1em}
+
+/* header */
+.head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px}
+.head h1{margin:0;font-size:20px;letter-spacing:-.02em}
+.head .sub{color:var(--muted);font-size:13px}
+.head .sp{flex:1}
+.pulse{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--good);background:var(--good-bg);padding:4px 10px;border-radius:999px}
+.pulse i{width:8px;height:8px;border-radius:50%;background:var(--good);animation:pulse 1.6s ease-in-out infinite}
+.pulse.off{color:var(--muted);background:var(--ice)}.pulse.off i{background:var(--muted);animation:none}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pulse i{animation:none}}
+
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:14px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.live{background:var(--navy);border-color:var(--navy);color:#fff}
+.kpi.live .k,.kpi.live .s{color:#D9C6FA}
+
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+@media (max-width:1000px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.panel h2{margin:0 0 4px;font-size:16px;display:flex;align-items:center;gap:8px}
+.panel h2::before{content:"";width:10px;height:10px;background:var(--red-deep)}
+.panel .hint{margin:0 0 12px;color:var(--muted);font-size:12.5px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:2px solid var(--navy);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.r,th.r{text-align:right}
+.mail{font-weight:700;word-break:break-all}
+.anon{color:var(--muted)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--ice);color:var(--muted)}
+.tag.download{background:var(--good-bg);color:var(--good)}.tag.lead{background:#F8DEF3;color:#7A1F70}.tag.tryit{background:var(--cyan-soft);color:var(--navy)}
+.empty{color:var(--muted);padding:14px 4px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:150px minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:12.5px}
+.bar .t{height:10px;background:var(--ice);border-radius:5px;overflow:hidden}
+.bar .f{height:100%;background:var(--teal);border-radius:5px}
+.bar:first-child .f{background:var(--red-deep)}
+.bar .n{text-align:right}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.toolbar input{flex:1;min-width:180px;font-size:13.5px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--ice)}
+.note{margin-top:14px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<section class="gate" id="gate">
+  <form id="gateForm" novalidate>
+    <svg viewBox="0 0 64 64" aria-hidden="true" style="height:44px;width:44px"><rect width="64" height="64" rx="16" fill="#26105a"/><path transform="translate(2 2)" d="M17 25h8.5a5 5 0 1 1 9 0H43v8.5a5 5 0 1 1 0 9V51H17z" fill="#efeaff" stroke="#efeaff" stroke-width="3" stroke-linejoin="round"/></svg>
+    <h1>Gnosis Analytics</h1>
+    <p>Enter the admin token you set on the Cloudflare Worker.</p>
+    <label class="field">Admin token<input id="token" type="password" autocomplete="current-password" required></label>
+    <div class="err" id="gateErr" role="alert"></div>
+    <button class="btn navy" type="submit">Open dashboard</button>
+  </form>
+</section>
+
+<main class="wrap" id="dash" hidden>
+  <header class="head">
+    <svg viewBox="0 0 64 64" aria-hidden="true" style="height:30px;width:30px"><rect width="64" height="64" rx="16" fill="#26105a"/><path transform="translate(2 2)" d="M17 25h8.5a5 5 0 1 1 9 0H43v8.5a5 5 0 1 1 0 9V51H17z" fill="#efeaff" stroke="#efeaff" stroke-width="3" stroke-linejoin="round"/></svg>
+    <h1>Gnosis Analytics</h1>
+    <span class="pulse" id="pulse"><i></i><span id="pulseText">Live</span></span>
+    <span class="sub" id="updated"></span>
+    <span class="sp"></span>
+    <button class="btn" id="refresh">Refresh</button>
+    <button class="btn" id="signout">Sign out</button>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Live now</h2>
+      <p class="hint" id="liveHint">People with the site open in the last 90 seconds. Updates every 15 seconds.</p>
+      <div class="scroll"><table><thead><tr><th>Where</th><th>Device</th><th>Page</th><th>Doing</th><th class="r">Seen</th></tr></thead><tbody id="liveRows"></tbody></table></div>
+    </section>
+    <section class="panel chart">
+      <h2>Last 30 days</h2>
+      <p class="hint">Visits and unique visitors per day (UTC).</p>
+      <div id="chart"></div>
+      <div class="legend"><span><i style="background:#26105a"></i>Visits</span><span><i style="background:#B79CF5"></i>Unique visitors</span><span><i style="background:#9B2C8F"></i>Downloads</span></div>
+    </section>
+  </div>
+
+  <div class="grid3">
+    <section class="panel"><h2>Top pages</h2><p class="hint">Page views, last 30 days.</p><div class="bars" id="pages"></div></section>
+    <section class="panel"><h2>Where visitors come from</h2><p class="hint">Referring sites, unique visitors, last 30 days.</p><div class="bars" id="refs"></div></section>
+    <section class="panel"><h2>Downloads</h2><p class="hint">Download clicks, last 30 days.</p><div class="bars" id="downloads"></div></section>
+  </div>
+  <div class="grid3">
+    <section class="panel"><h2>Countries</h2><p class="hint">Unique visitors, last 30 days.</p><div class="bars" id="countries"></div></section>
+    <section class="panel"><h2>Devices</h2><p class="hint">Unique visitors, last 30 days.</p><div class="bars" id="devices"></div></section>
+    <section class="panel"><h2>What we record</h2><p class="hint" style="margin:0">Page views, download clicks, use of the example chat, and that a demo or contact message was prepared. Never names, emails, message text or IP addresses. Crawlers are not counted. Events are kept for about 13 months.</p></section>
+  </div>
+  <div class="toolbar" style="margin-top:14px"><button class="btn red" id="csv">Download events CSV</button></div>
+
+  <section class="panel" style="margin-top:14px">
+    <h2>Recent activity</h2>
+    <p class="hint">The last 60 events. Heartbeats are not listed.</p>
+    <div class="scroll"><table><thead><tr><th>When</th><th>Event</th><th>Page</th><th>Country</th><th>Device</th><th>Detail</th></tr></thead><tbody id="recentRows"></tbody></table></div>
+  </section>
+
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=new Intl.NumberFormat('en-GB');
+const fmtTime=t=>t?new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+const ago=t=>{const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<60?`${s}s ago`:s<3600?`${Math.round(s/60)}m ago`:`${Math.round(s/3600)}h ago`;};
+const regionName=(()=>{try{const d=new Intl.DisplayNames(['en-GB'],{type:'region'});return c=>{if(!c||c==='??'||c==='XX'||c==='T1')return 'Unknown';try{return d.of(c)||c}catch(e){return c}};}catch(e){return c=>c||'Unknown';}})();
+const ACT={pageview:'Viewed a page',heartbeat:'Browsing',download:'Downloaded',tryit:'Tried the example chat',lead:'Prepared a message'};
+const KIND={'mac-app':'Mac app','package':'Mac and Windows package',demo:'Demo request',contact:'Contact message',ask:'Asked a question'};
+const detail=e=>e.type==='download'?(KIND[e.meta]||e.meta||''):e.type==='lead'?(KIND[e.meta]||e.meta||''):e.type==='pageview'&&e.ref?'from '+e.ref:'';
+const pageName=p=>!p||p==='/'||p==='/index.html'?'Home':p.replace(/^\//,'').replace(/\.html$/,'').replace(/^./,c=>c.toUpperCase());
+let TOKEN='';try{TOKEN=sessionStorage.getItem('gn.admin')||'';}catch(e){}
+let data=null,timer=null;
+
+async function api(path){
+  const r=await fetch(path,{headers:{authorization:'Bearer '+TOKEN},cache:'no-store'});
+  if(r.status===401)throw Object.assign(new Error('Wrong admin token.'),{auth:true});
+  if(!r.ok){let m='The dashboard could not load ('+r.status+').';try{m=(await r.json()).error||m}catch(e){}throw new Error(m);}
+  return r;
+}
+async function load(){
+  try{
+    data=await (await api('/api/admin/summary')).json();
+    render();$('#pulse').classList.remove('off');$('#pulseText').textContent='Live';
+  }catch(e){
+    if(e.auth){signOut('That token was not accepted. Check it and try again.');return;}
+    $('#pulse').classList.add('off');$('#pulseText').textContent='Offline';$('#updated').textContent=e.message;
+  }
+}
+function start(){$('#gate').hidden=true;$('#dash').hidden=false;load();clearInterval(timer);timer=setInterval(()=>{if(document.visibilityState==='visible')load();},15000);}
+function signOut(msg){clearInterval(timer);TOKEN='';try{sessionStorage.removeItem('gn.admin')}catch(e){};$('#dash').hidden=true;$('#gate').hidden=false;$('#gateErr').textContent=msg||'';$('#token').value='';$('#token').focus();}
+
+function kpi(k,v,s,cls=''){return `<div class="kpi ${cls}"><span class="k">${k}</span><span class="v num">${v}</span><span class="s">${s}</span></div>`;}
+function bars(el,rows,label,val){
+  const max=Math.max(1,...rows.map(val));
+  $(el).innerHTML=rows.length?rows.map(r=>`<div class="bar"><span>${esc(label(r))}</span><div class="t"><div class="f" style="width:${val(r)/max*100}%"></div></div><span class="n num">${nf.format(val(r))}</span></div>`).join(''):'<div class="empty">No data yet.</div>';
+}
+function chart(daily){
+  const days=[];const map=new Map(daily.map(d=>[d.day,d]));
+  for(let i=29;i>=0;i--){const d=new Date(Date.now()-i*864e5).toISOString().slice(0,10);days.push(map.get(d)||{day:d,visits:0,visitors:0,downloads:0});}
+  const W=640,H=220,L=36,B=24,T=10,R=8,w=(W-L-R)/days.length;
+  const max=Math.max(4,...days.map(d=>d.visits));const step=Math.ceil(max/4);const top=step*4;
+  const y=v=>T+(H-T-B)*(1-v/top);
+  let g='';for(let i=0;i<=4;i++){const v=step*i;g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#E2D9EC"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="#5B5266">${v}</text>`;}
+  let b='',line='';days.forEach((d,i)=>{const x=L+i*w;b+=`<rect x="${x+w*.18}" y="${y(d.visits)}" width="${w*.64}" height="${y(0)-y(d.visits)}" fill="#26105a" rx="1.5"><title>${d.day}: ${d.visits} visits, ${d.visitors} visitors, ${d.downloads} sign-ins</title></rect>`;if(d.downloads)b+=`<circle cx="${x+w/2}" cy="${y(d.visits)-6}" r="3" fill="#9B2C8F"/>`;line+=`${i?'L':'M'}${x+w/2},${y(d.visitors)}`;});
+  const lbl=[0,7,14,21,29].map(i=>`<text x="${L+i*w+w/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#5B5266">${new Date(days[i].day+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</text>`).join('');
+  $('#chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Visits per day over the last 30 days">${g}${b}<path d="${line}" fill="none" stroke="#B79CF5" stroke-width="2.5"/>${lbl}</svg>`;
+}
+function render(){
+  const t=data.totals||{};
+  $('#updated').textContent='Updated '+new Date(data.generatedAt).toLocaleTimeString('en-GB');
+  $('#kpis').innerHTML=kpi('Live now',nf.format(data.live.length),'on the site right now','live')+
+    kpi('Visits · 24h',nf.format(t.visits24||0),`${nf.format(t.visitors24||0)} unique visitors`)+
+    kpi('Visits · 7 days',nf.format(t.visits7||0),`${nf.format(t.visitors7||0)} unique visitors`)+
+    kpi('Downloads · 7 days',nf.format(t.downloads7||0),`${nf.format(t.downloads30||0)} in 30 days`)+
+    kpi('Demo requests · 30d',nf.format(t.demos30||0),`${nf.format(t.contacts30||0)} contact messages`)+
+    kpi('Tried the chat · 30d',nf.format(t.tryit30||0),`${nf.format(t.visitsAll||0)} visits all time`);
+  $('#liveRows').innerHTML=data.live.length?data.live.map(l=>`<tr><td>${esc([l.city,regionName(l.country)].filter(Boolean).join(', '))}</td><td>${esc(l.device||'')}</td><td>${esc(pageName(l.last_path))}</td><td>${esc(ACT[l.last_type]||l.last_type||'')}</td><td class="r">${ago(l.last_seen)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nobody is on the site right now.</td></tr>';
+  chart(data.daily||[]);
+  bars('#countries',data.countries||[],r=>regionName(r.country),r=>r.visitors);
+  bars('#devices',data.devices||[],r=>r.device||'Unknown',r=>r.visitors);
+  bars('#pages',data.pages||[],r=>pageName(r.path),r=>r.n);
+  bars('#refs',data.referrers||[],r=>r.ref,r=>r.visitors);
+  bars('#downloads',data.downloads||[],r=>KIND[r.kind]||r.kind||'Unknown',r=>r.n);
+  $('#recentRows').innerHTML=(data.recent||[]).length?data.recent.map(e=>`<tr><td>${fmtTime(e.ts)}</td><td><span class="tag ${esc(e.type)}">${esc(ACT[e.type]||e.type)}</span></td><td>${esc(pageName(e.path))}</td><td>${esc(regionName(e.country))}</td><td>${esc(e.device||'')}</td><td>${esc(detail(e))}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No activity yet.</td></tr>';
+}
+
+$('#gateForm').addEventListener('submit',e=>{e.preventDefault();TOKEN=$('#token').value.trim();if(!TOKEN){$('#gateErr').textContent='Enter the admin token.';return;}try{sessionStorage.setItem('gn.admin',TOKEN)}catch(e){}$('#gateErr').textContent='';start();});
+$('#refresh').addEventListener('click',load);
+$('#signout').addEventListener('click',()=>signOut(''));
+$('#csv').addEventListener('click',async()=>{
+  try{const blob=await (await api('/api/admin/events.csv')).blob();const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`gnosis-events-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);}
+  catch(e){if(e.auth)signOut('That token was not accepted.');else alert(e.message);}
+});
+if(TOKEN)start();else $('#token').focus();
+</script>
+</body>
+</html>

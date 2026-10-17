@@ -1,0 +1,19 @@
+// Cloudflare Workers config for the Gnosis website.
+// Serves the static site from ./public and runs src/worker.js for /api/* (usage analytics).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gnosis-website",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+
+  // Analytics database (Cloudflare D1). Wrangler creates a database called "gnosis-website"
+  // on the first deploy and fills in its ID; tables are created automatically on first use.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "gnosis-website" }
+  ]
+}
