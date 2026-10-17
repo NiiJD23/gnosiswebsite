@@ -10,14 +10,15 @@ Live at https://gnosis.promintal.com
 - `src/worker.js`: a small Cloudflare Worker that serves `public/` and records visits to a D1 database
 - `wrangler.jsonc`: Worker, assets and database settings
 
-The demo and contact forms prepare an email draft for info@promintal.co.uk. Nothing is sent from the page.
+The demo and contact forms post to `/api/request`, and the Worker emails info@promintal.co.uk through Resend (reply-to is the visitor). If sending fails, the page shows an email draft instead.
 
 ## Deploy to Cloudflare (gnosis.promintal.com)
 
 1. **Deploy from Git.** Workers & Pages, Create, Import a repository, choose this repo. Deploy command `npx wrangler deploy`, no build command. Every push to `main` redeploys. (Use a Worker, not a Pages project, so the analytics API runs.)
 2. **Database.** `wrangler.jsonc` binds a D1 database named `gnosis-website`. Wrangler creates it on the first deploy; tables are created on first use.
 3. **Set the admin token.** Worker, Settings, Variables and Secrets, Add. Type *Secret*, name `ADMIN_TOKEN`, value a long random password only you know.
-4. **Add the domain.** Worker, Domains, Add Domain, `gnosis.promintal.com`.
+4. **Add the Resend key.** Add another secret named `RESEND_API_KEY` (create a sending-only key in Resend; the gnosis.promintal.com domain is already verified there). Optional variable `MAIL_FROM`, default `Gnosis website <noreply@gnosis.promintal.com>`.
+5. **Add the domain.** Worker, Domains, Add Domain, `gnosis.promintal.com`.
 
 ## Visitor dashboard
 
@@ -26,7 +27,7 @@ Open `https://gnosis.promintal.com/admin` and enter the `ADMIN_TOKEN`. It refres
 ## Data and privacy
 
 - Tracking runs only on `promintal.com`, and is skipped when the browser sends Do Not Track or Global Privacy Control.
-- Stored: page, referring site name, country and city from Cloudflare, device type, a random visitor ID, and download or form-use events. Not stored: IP addresses, names, emails, form text or chat text. Crawlers are not counted.
+- Stored: page, referring site name, country and city from Cloudflare, device type, a random visitor ID, and download or form-use events. Not stored in visit records: IP addresses, names, emails, form text or chat text. Form text is only emailed. Crawlers are not counted.
 - Events are deleted after about 13 months. The notice is in `public/privacy.html`; have it reviewed before relying on it.
 - Run locally with `npm install`, create `.dev.vars` containing `ADMIN_TOKEN=...`, then `npx wrangler dev`.
 
