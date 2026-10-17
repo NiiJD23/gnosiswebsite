@@ -213,8 +213,8 @@
       var ctl = window.AbortController ? new AbortController() : null, timer = setTimeout(function () { if (ctl) ctl.abort(); }, 10000);
       fetch("/api/request", { method: "POST", headers: { "content-type": "application/json" }, signal: ctl ? ctl.signal : undefined,
         body: JSON.stringify({ kind: kind, name: name, email: email, fields: fields, website: hp ? hp.value : "" }) })
-        .then(function (r) { if (!r.ok) throw new Error("status " + r.status); track("lead", kind); showSent(); })
-        .catch(function () { showDraft(); })
+        .then(function (r) { if (!r.ok) return r.json().catch(function () { return {}; }).then(function (d) { var er = new Error("status " + r.status); er.reason = d.reason || ""; throw er; }); track("lead", kind); showSent(); })
+        .catch(function (er) { var rs = $(".reason", draft); if (rs) rs.textContent = er && er.reason ? "Reason: " + er.reason : ""; showDraft(); })
         .then(function () { clearTimeout(timer); btn.disabled = false; btn.textContent = label; });
     });
     var cp = $("button.copy", draft);

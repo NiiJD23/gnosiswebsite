@@ -152,7 +152,7 @@ async function handleRequest(request, env) {
   const url = new URL(request.url);
   const origin = request.headers.get('origin');
   if (origin && new URL(origin).host !== url.host) return json({ error: 'Cross-site requests are not accepted.' }, 403);
-  if (!env.RESEND_API_KEY) return json({ error: 'Email sending is not set up yet.' }, 503);
+  if (!env.RESEND_API_KEY) return json({ error: 'Email sending is not set up yet.', reason: 'The RESEND_API_KEY secret is not set on the Worker.' }, 503);
 
   let body;
   try {
@@ -195,8 +195,11 @@ async function handleRequest(request, env) {
     }),
   });
   if (!res.ok) {
-    console.error('Resend error', res.status, (await res.text()).slice(0, 300));
-    return json({ error: 'Could not send the message.' }, 502);
+    const detail = (await res.text()).slice(0, 300);
+    console.error('Resend error', res.status, detail);
+    let why = '';
+    try { why = JSON.parse(detail).message || ''; } catch {}
+    return json({ error: 'Could not send the message.', reason: `Resend said: ${clip(why, 160) || 'error ' + res.status}` }, 502);
   }
   return new Response(null, { status: 204 });
 }
